@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Blink Decoder – Festival Morse</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: system-ui, -apple-system, sans-serif;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #video-container {
+    position: relative;
+    flex: 1;
+    background: #000;
+    overflow: hidden;
+  }
+  video, canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  #roi {
+    position: absolute;
+    border: 2px solid #00ff88;
+    border-radius: 8px;
+    pointer-events: none;
+    box-shadow: 0 0 14px #00ff88cc;
+    display: none;
+  }
+  #status {
+    position: absolute;
+    top: 10px; left: 10px; right: 10px;
+    background: rgba(0,0,0,0.78);
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.35;
+    z-index: 10;
+  }
+  #angle-info {
+    position: absolute;
+    top: 70px; left: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 10;
+    font-family: monospace;
+  }
+  #brightness-bar {
+    height: 6px;
+    background: #222;
+    border-radius: 3px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  #brightness-fill {
+    height: 100%;
+    width: 0%;
+    background: #00ff88;
+    transition: width 0.05s;
+  }
+  #controls {
+    padding: 12px 14px;
+    /* Extra Platz unten für Home-Indikator / System-Leiste */
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 24px));
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+  button {
+    flex: 1;
+    padding: 14px 6px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  button:active { opacity: 0.85; }
+  #btn-start { background: #00ff88; color: #000; }
+  #btn-stop  { background: #ff4444; color: #fff; display: none; }
+  #btn-clear { background: #333; color: #fff; }
+  #btn-cal   { background: #444; color: #fff; }
+  .zoom-btn { background: #1a1a28; color: #00ff88; font-size: 20px; max-width: 56px; }
+  #zoom-label {
+    flex: 1;
+    text-align: center;
+    font-size: 15px;
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #message {
+    background: #1a1a22;
+    border-radius: 12px;
+    padding: 14px;
+    min-height: 72px;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1.35;
+    word-break: break-word;
+    color: #00ff88;
+  }
+  #raw {
+    font-size: 12px;
+    color: #777;
+    margin-top: 2px;
+    letter-spacing: 1px;
+  }
+  .label { font-size: 11px; color: #888; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<div id="video-container">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+  <div id="roi"></div>
+  <div id="status">Kamera startet…</div>
+  <div id="angle-info">Winkel: warte…</div>
+  <div style="position:absolute; bottom:10px; left:10px; right:10px; z-index:10;">
+    <div class="label">Helligkeit</div>
+    <div id="brightness-bar"><div id="brightness-fill"></div></div>
+  </div>
+</div>
+
+<div id="controls">
+  <div class="label">Decodierte Nachricht</div>
+  <div id="message">Warte auf Blinksignale…</div>
+  <div id="raw"></div>
+
+  <div class="row">
+    <button class="zoom-btn" id="btn-zoom-out">−</button>
+    <div id="zoom-label">Zoom 1.0×</div>
+    <button class="zoom-btn" id="btn-zoom-in">+</button>
+  </div>
+
+  <div
